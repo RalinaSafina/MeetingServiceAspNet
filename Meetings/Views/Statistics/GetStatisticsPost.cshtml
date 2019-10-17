@@ -1,0 +1,78 @@
+﻿@using Meetings.ForMeetings;
+@model List<MeetingsForStatistics>
+
+<div id="results">
+    <table class="table">
+        <tbody>
+            <tr>
+                <th>
+                    Организатор
+                </th>
+                <th>
+                    Время начала
+                </th>
+                <th>
+                    Количество совещаний
+                </th>
+                <th>
+                    Суммарная стоимость (рубль)
+                </th>
+                <th>
+                    Продолжительность (час)
+                </th>
+            </tr>
+            @foreach (var item in Model)
+            {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelitem => item.Organizer)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelitem => item.StartTime)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelitem => item.MeetingsAmount)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelitem => item.MeetingsTotalPrice)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelitem => item.Duration)
+                </td>
+            </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>
+                    Всего организаторов
+                </th>
+                <th></th>
+                <th>
+                    Всего совещаний
+                </th>
+                <th>
+                    Суммарная стоимость (рубль)
+                </th>
+                <th>
+                    Общая продолжительность (час)
+                </th>
+            </tr>
+            <tr>
+                <td>
+                    @ViewBag.organizers
+                </td>
+                <td></td>
+                <td>
+                    @ViewBag.meetings
+                </td>
+                <td>
+                    @ViewBag.price
+                </td>
+                <td>
+                    @ViewBag.totalDuration
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>

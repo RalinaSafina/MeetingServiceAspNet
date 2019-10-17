@@ -1,0 +1,68 @@
+﻿@model Meetings.Models.ApplicationUser
+
+@{
+    ViewBag.Title = "Edit";
+}
+
+@Html.ValidationSummary(false)
+
+<h2>Редактирование пользователя</h2>
+
+@using (Html.BeginForm())
+{
+    @Html.HiddenFor(x => x.Id)
+    <div class="form-group">
+        <label>Имя</label>
+        @Html.TextBoxFor(x => x.Name, new { @class = "form-control" })
+    </div>
+    <div class="form-group">
+        <label>Email</label>
+        @Html.TextBoxFor(x => x.Email, new { @class = "form-control" })
+    </div>
+    <div class="form-group">
+        <label>Пароль</label>
+        <input id="password" type="password" name="password" class="form-control" />
+    </div>
+    <div id="check1" style="color:red;" hidden>
+        *Заполните имя!
+    </div>
+    <div id="check2" style="color:red;" hidden>
+        *Некорректный email!
+    </div>
+    <div id="check3" style="color:red;" hidden>
+        *Заполните пароль!
+    </div>
+    <button type="submit" class="btn btn-primary" onclick="return check()">Сохранить</button>
+    @Html.ActionLink("Отмена", "Index", null, new { @class = "btn btn-default" })
+}
+
+<script type="text/javascript">
+    function check() {
+        var r = @Html.Raw("/^\\w+@\\w+\\.\\w{2,4}$/i");
+
+        if (!document.getElementById("Email").value.match(r)) {
+            document.getElementById("check2").hidden = false;
+            return false;
+        }
+        else {
+            document.getElementById("check2").hidden = true;
+        }
+
+        if (document.getElementById("Name").value == "") {
+            document.getElementById("check1").hidden = false;
+            return false;
+        }
+        else {
+            document.getElementById("check1").hidden = true;
+        }
+
+        if (document.getElementById("password").value == "") {
+            document.getElementById("check3").hidden = false;
+            return false;
+        }
+        else {
+            document.getElementById("check3").hidden = true;
+        }
+
+    }
+</script>

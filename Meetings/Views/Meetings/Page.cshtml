@@ -1,0 +1,258 @@
+﻿@model Meetings.ForMeetings.MeetingViewModel
+
+@{
+    ViewBag.Title = "Page";
+}
+
+@Scripts.Render("~/scripts/axios.js")
+
+<div class="center-block" style="padding-left: 20%;">
+    <h2>Совещание</h2>
+    <div class="row form-inline" style="margin-top: 30px; margin-bottom: 30px;">
+        <div>
+            @Html.LabelFor(m => m.Organizer, new { @class = "col-md-2 control-label" })
+            <label id="Organizer" style="color: red">@ViewBag.email</label>
+        </div>
+        <div>
+            <label class="col-md-6">Стоимость часа (с человека): @ViewBag.price рублей</label>
+        </div>
+    </div>
+
+    <div id="meeting" style="color:mediumpurple; font-size: 15px;" hidden>
+        Текущее совещание:
+        <div>
+            <div id="currentMeetingTopic"></div>
+            <div id="currentMeetingParts"></div>
+        </div>
+    </div>
+
+    <div class="row form-inline style=" margin-top: 30px; margin-bottom: 30px;"">
+        @Html.LabelFor(m => m.Topic, new { @class = "col-md-2 control-label" })
+        @Html.TextBoxFor(m => m.Topic, new { @class = "form-control" })
+    </div>
+    <div class="row form-inline">
+        <div style="margin-top: 30px; margin-bottom: 30px;">
+            @Html.LabelFor(m => m.Participants, new { @class = "col-md-2 control-label" })
+            @Html.ListBox("participants", new MultiSelectList(ViewBag.data), new { size = 5, @class = "col-md-2" })
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; margin-bottom: 30px;">
+        <div style="margin-bottom: 10px;">
+            Дополнительные участники:
+        </div>
+        @Html.TextBoxFor(m => m.NotRegisteredParticipants, new { placeholder = "Добавить участника", @class = "col-md-2 form-control" })
+        <button id="newParticipant" class="btn btn-default" onclick="newParticipant()">+</button>
+    </div>
+    <div id="forextraparticipants" hidden>
+
+        <textarea id="extra" cols="20" rows="4" readonly></textarea>
+    </div>
+</div>
+<div class="pull-right" style="margin-top: 30px; margin-bottom: 30px;  padding-right: 20%;">
+    <div id="currentPrice">
+        Итого: 0 рублей
+    </div>
+    <div style="font-size: 25px;">
+        Текущее время:
+    </div>
+    <div id="currentTime" style="font-size: 25px;">
+        00:00:00
+    </div>
+    <div id="caution" style="color: red" hidden>
+        *Тема совещания или участники не заполнены!
+    </div>
+    <button id="startMeetingButton" class="btn btn-default" style="display: block;" onclick="startNewMeeting()">Начать</button>
+    <button id="stopMeetingButton" class="btn btn-default" style="display: none;" onclick="stopCurrentMeeting()">Закончить</button>
+</div>
+
+
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", ready);
+
+    var currentMeeting = null;
+    var timeTimer = null;
+    var databaseTimer = null;
+    var notRegisteredParticipants = [];
+
+    class Meeting {
+        constructor(id, organizer, topic, participants, notRegisteredParticipants, startTime, stopTime, lastRegisteredTime) {
+            this.id = id;
+            this.organizer = organizer;
+            this.topic = topic;
+            this.participants = participants;
+            this.notRegisteredParticipants = notRegisteredParticipants;
+            this.startTime = startTime;
+            this.stopTime = stopTime;
+            this.lastRegisteredTime = lastRegisteredTime;
+        }
+    }
+
+    function ready() {
+        loadCurrentMeeting();
+    }
+
+    function newParticipant() {
+        let part = document.getElementById("NotRegisteredParticipants").value;
+        notRegisteredParticipants[notRegisteredParticipants.length] = part;
+        document.getElementById("NotRegisteredParticipants").value = "";
+        document.getElementById("forextraparticipants").hidden = false;
+        document.getElementById("extra").textContent += part + "\n";
+    }
+
+    function getSelectedOption(sel) {
+        var result = [];
+        for (var i = 0, len = sel.options.length; i < len; i++) {
+            let currentOption = sel.options[i];
+            if (currentOption.selected === true) {
+                result.push(currentOption.innerText);
+            }
+        }
+        return result;
+    }
+
+    function getMeetingFromJson(data) {
+        var startTime = data.StartTime == null ? null : new Date(parseInt(data.StartTime.replace("/Date(", "").replace(")/", ""), 10));
+
+        var stopTime = data.StopTime == null ? null : new Date(parseInt(data.StopTime.replace("/Date(", "").replace(")/", ""), 10));
+
+        var lastRegisteredTime = data.LastRegisteredTime == null ? null : new Date(parseInt(data.LastRegisteredTime.replace("/Date(", "").replace(")/", ""), 10));
+
+        console.log(data);
+
+        return new Meeting(
+            data.Id, data.Organizer, data.Topic, data.Participants == "" ? [] : data.Participants.split(", "), [],
+            startTime, stopTime, lastRegisteredTime
+        );
+    }
+
+    function startNewMeeting(event) {
+
+        let organizer = document.getElementById("Organizer").value;
+        let topic = document.getElementById("Topic").value;
+        let participants = this.getSelectedOption(document.getElementById("participants"));
+
+        if (topic == "") {
+            document.getElementById("caution").hidden = false;
+        }
+        else if (participants.length > 0 || notRegisteredParticipants.length > 0) {
+            document.getElementById("caution").hidden = true;
+            axios.post("New", {
+                Organizer: organizer,
+                Topic: topic,
+                Participants: participants,
+                notRegisteredParticipants: notRegisteredParticipants
+            })
+                .then(function (response) {
+
+                    this.currentMeeting = getMeetingFromJson(response.data);
+
+                    document.getElementById('startMeetingButton').style.display = "none";
+                    document.getElementById('stopMeetingButton').style.display = "block";
+                    this.startAllTimer();
+                }).catch(function (error) {
+                    console.log(error);
+                })
+        }
+        else {
+            document.getElementById("caution").hidden = false;
+        }
+        return false;
+    }
+
+    function stopCurrentMeeting(event) {
+        axios.post("Stop", {
+            meetingId: this.currentMeeting.id
+        })
+            .then(function (response) {
+                document.getElementById('startMeetingButton').style.display = "block";
+                document.getElementById('stopMeetingButton').style.display = "none";
+                stopAllTimer();
+                document.getElementById("currentTime").innerHTML = "00:00:00";
+                
+                this.currentMeeting = null;
+            })
+        location.reload();
+    }
+
+    //Проверяет есть ли текущий митинг. Если есть, то отображает его
+    function loadCurrentMeeting() {
+        axios.get("Current")
+            .then(function (response) {
+                var data = response.data;
+                if (response.data == null || response.data == "") {
+                    this.currentMeeting = null;
+                    document.getElementById('startMeetingButton').style.display = "block";
+                    document.getElementById('stopMeetingButton').style.display = "none";
+                } else {
+                    this.currentMeeting = getMeetingFromJson(response.data);
+                    document.getElementById("meeting").hidden = false;
+                    document.getElementById("currentMeetingTopic").innerHTML = "Тема: " + this.currentMeeting.topic;
+                    document.getElementById("currentMeetingParts").innerHTML = "Участники: " + this.currentMeeting.participants;
+                    document.getElementById('startMeetingButton').style.display = "none";
+                    document.getElementById('stopMeetingButton').style.display = "block";
+                    this.startAllTimer();
+                }
+            })
+            .catch(function (error) {
+
+            })
+            .finally(function () {
+
+            })
+    }
+
+    //Обновляет время в элемента
+    function updateTime() {
+        var startTime = this.currentMeeting.startTime;
+        var deltaMs = new Date().getTime() - startTime.getTime();
+        var deltaSeconds = (deltaMs / 1000) % 60;
+        var deltaMinutes = (deltaMs / 1000 / 60) % 60;
+        var deltaHours = (deltaMs / 1000 / 60 / 60);
+
+        var secondsShow = ((parseInt(deltaSeconds) < 10) ? "0" : "") + parseInt(deltaSeconds);
+        var minutesShow = ((parseInt(deltaMinutes) < 10) ? "0" : "") + parseInt(deltaMinutes);
+        var hoursShow = ((parseInt(deltaHours) < 10) ? "0" : "") + parseInt(deltaHours);
+
+        document.getElementById("currentTime").innerHTML = "" + hoursShow + ":" + minutesShow + ":" + secondsShow;
+
+        var pricePerHour = 60;
+        var participantsNumber = this.currentMeeting.participants.length + this.currentMeeting.notRegisteredParticipants.length;
+        var sum = Math.round(deltaMs * pricePerHour / 3600000 * participantsNumber * 100) / 100;
+        document.getElementById("currentPrice").innerHTML = "Итого: " + parseFloat(sum) + " рублей";
+    }
+
+    //Обновляет бд
+    function updateDatabase() {
+        axios.post("Update", {
+            meetingId: this.currentMeeting.id
+        })
+            .then(function (response) {
+            })
+            .catch(function (error) {
+                console.log(error);
+            })
+    }
+
+    //Запускает текущий митинг
+    function startAllTimer() {
+        this.timeTimer = setInterval(() => updateTime(), 1000);
+        this.databaseTimer = setInterval(() => updateDatabase(), 5000);
+    }
+
+    //Останавливает все таймеры
+    function stopAllTimer() {
+        if (this.timeTimer != null) {
+            clearInterval(this.timeTimer);
+        }
+        if (this.databaseTimer != null) {
+            clearInterval(this.databaseTimer);
+        }
+
+        var duration = new Date().getTime() - this.currentMeeting.startTime.getTime();
+        var pricePerHour = 60;
+        var participantsNumber = this.currentMeeting.participants.length + this.currentMeeting.notRegisteredParticipants.length;
+        var sum = Math.round(duration * pricePerHour / 3600000 * participantsNumber * 100) / 100;
+        alert("Итого: " + sum + " рублей" + "\n" + "Участники: " + this.currentMeeting.participants);
+    }
+</script>

@@ -1,0 +1,43 @@
+﻿@using Meetings.Models;
+@model List<ApplicationUser>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Список пользователей</h2>
+
+@Html.ActionLink("Добавить нового пользователя", "AddUser")
+
+<table class="table">
+    <tr>
+        <th>
+            Имя пользователя
+        </th>
+        <th>
+            Логин
+        </th>
+        <th>
+            Пароль
+        </th>
+    </tr>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelitem => item.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelitem => item.UserName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelitem => item.PasswordHash)
+            </td>
+            <td>
+                @Html.ActionLink("Редактировать", "Edit", new { id = item.Id })
+
+                @Html.ActionLink("Удалить", "DeleteUser", new { id = item.Id })
+            </td>
+        </tr>
+    }
+</table>
